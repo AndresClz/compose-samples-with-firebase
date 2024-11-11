@@ -19,6 +19,7 @@ package com.example.jetnews.ui.article
 import android.content.Context
 import android.content.Intent
 import android.content.res.Configuration.UI_MODE_NIGHT_YES
+import android.util.Log
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -43,6 +44,7 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.material3.rememberTopAppBarState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -66,7 +68,7 @@ import com.example.jetnews.ui.utils.BookmarkButton
 import com.example.jetnews.ui.utils.FavoriteButton
 import com.example.jetnews.ui.utils.ShareButton
 import com.example.jetnews.ui.utils.TextSettingsButton
-import com.google.firebase.crashlytics.FirebaseCrashlytics
+import com.google.firebase.database.FirebaseDatabase
 import kotlinx.coroutines.runBlocking
 
 /**
@@ -90,6 +92,28 @@ fun ArticleScreen(
     modifier: Modifier = Modifier,
     lazyListState: LazyListState = rememberLazyListState()
 ) {
+    // Define la referencia de Firebase y la función para enviar un artículo a Firebase
+    val articlesRef = FirebaseDatabase.getInstance().getReference("articles")
+
+    fun sendSingleArticleToFirebase(article: Post) {
+        val articleData = mapOf(
+            "title" to article.title,
+            "subtitle" to article.subtitle
+        )
+        articlesRef.push().setValue(articleData)
+            .addOnSuccessListener {
+                Log.d("Firebase", "Artículo enviado: ${article.title}")
+            }
+            .addOnFailureListener { exception ->
+                Log.e("Firebase", "Error al enviar artículo: ${article.title}", exception)
+            }
+    }
+
+    // Ejecuta la función al abrir el artículo por primera vez
+    LaunchedEffect(Unit) {
+        sendSingleArticleToFirebase(post)
+    }
+
     var showUnimplementedActionDialog by rememberSaveable { mutableStateOf(false) }
     if (showUnimplementedActionDialog) {
         FunctionalityNotAvailablePopup { showUnimplementedActionDialog = false }
@@ -116,16 +140,10 @@ fun ArticleScreen(
                 if (!isExpandedScreen) {
                     BottomAppBar(
                         actions = {
-                            FavoriteButton(onClick = {
-                                showUnimplementedActionDialog = true
-                                triggerCrash("FavoriteButton")
-                            })
+                            FavoriteButton(onClick = { showUnimplementedActionDialog = true })
                             BookmarkButton(isBookmarked = isFavorite, onClick = onToggleFavorite)
                             ShareButton(onClick = { sharePost(post, context) })
-                            TextSettingsButton(onClick = {
-                                showUnimplementedActionDialog = true
-                                triggerCrash("TextSettingsButton")
-                            })
+                            TextSettingsButton(onClick = { showUnimplementedActionDialog = true })
                         }
                     )
                 }
@@ -224,7 +242,6 @@ private fun FunctionalityNotAvailablePopup(onDismiss: () -> Unit) {
             }
         }
     )
-
 }
 
 /**
@@ -275,9 +292,4 @@ fun PreviewArticleNavRail() {
         }
         ArticleScreen(post, true, {}, false, {})
     }
-}
-
-fun triggerCrash(nameButton: String){
-    FirebaseCrashlytics.getInstance().log("Forzando un crash desde $nameButton en ArticleScreen")
-    throw RuntimeException("Crash simulado")
 }
