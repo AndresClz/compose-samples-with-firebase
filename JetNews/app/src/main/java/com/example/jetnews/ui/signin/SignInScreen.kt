@@ -48,7 +48,10 @@ import com.example.jetnews.ui.components.buttons.AuthButton
 import com.example.jetnews.ui.components.buttons.SocialAuthButton
 import com.example.jetnews.ui.components.textfields.AuthTextField
 import com.google.android.gms.auth.api.signin.GoogleSignIn
+import com.google.firebase.analytics.ktx.analytics
+import com.google.firebase.analytics.logEvent
 import com.google.firebase.auth.GoogleAuthProvider
+import com.google.firebase.ktx.Firebase
 import kotlinx.coroutines.launch
 
 @Suppress("ktlint:standard:function-naming")
@@ -60,6 +63,7 @@ fun SignInScreen(
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    val analytics = Firebase.analytics // Inicialización de Firebase Analytics
     // State
     val email by viewModel.email
     val password by viewModel.password
@@ -67,13 +71,16 @@ fun SignInScreen(
 
     LaunchedEffect(uiState) {
         if (uiState is AuthUiState.Success) {
+            // Registrar evento de inicio de sesión en Analytics cuando el usuario inicia sesión con éxito
+            analytics.logEvent("user_sign_in") {
+                param("sign_in_method", "email") // Aquí podrías especificar "email" u otro método
+            }
             navHostController.navigate(JetnewsDestinations.HOME_ROUTE) {
                 popUpTo(JetnewsDestinations.SIGNIN_ROUTE) { inclusive = true }
             }
         }
     }
 
-    // Firebase Auth launcher
     // ActivityResultLauncher for Google Sign-In
     val googleSignInLauncher =
         rememberLauncherForActivityResult(
@@ -86,6 +93,9 @@ fun SignInScreen(
                     val credential = GoogleAuthProvider.getCredential(account?.idToken, null)
                     scope.launch {
                         viewModel.handleGoogleCredential(credential)
+                        analytics.logEvent("user_sign_in") {
+                            param("sign_in_method", "google")
+                        }
                     }
                 }
                 is AuthResult.Error -> {
@@ -169,7 +179,13 @@ fun SignInScreen(
             // Sign In Button
             AuthButton(
                 text = "Sign In",
-                onClick = viewModel::onSignInClick,
+                onClick = {
+                    viewModel.onSignInClick()
+                    // Registrar evento de intento de inicio de sesión
+                    analytics.logEvent("attempt_user_sign_in") {
+                        param("sign_in_method", "email")
+                    }
+                },
                 isLoading = uiState is AuthUiState.Loading,
             )
 
@@ -187,7 +203,6 @@ fun SignInScreen(
                 Divider(modifier = Modifier.weight(1f))
             }
 
-            // Social Sign In
             SocialAuthButton(
                 text = "Sign in with Google",
                 onClick = {
@@ -202,7 +217,6 @@ fun SignInScreen(
                     )
                 },
             )
-
             // Sign Up Link
             Row(
                 modifier = Modifier.padding(top = 8.dp),
