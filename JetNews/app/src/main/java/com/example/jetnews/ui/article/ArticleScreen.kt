@@ -68,12 +68,11 @@ import com.example.jetnews.ui.utils.BookmarkButton
 import com.example.jetnews.ui.utils.FavoriteButton
 import com.example.jetnews.ui.utils.ShareButton
 import com.example.jetnews.ui.utils.TextSettingsButton
-import com.google.firebase.database.FirebaseDatabase
-import com.google.firebase.analytics.FirebaseAnalytics
 import com.google.firebase.analytics.ktx.analytics
 import com.google.firebase.analytics.logEvent
-import com.google.firebase.ktx.Firebase
 import com.google.firebase.crashlytics.FirebaseCrashlytics
+import com.google.firebase.database.FirebaseDatabase
+import com.google.firebase.ktx.Firebase
 import kotlinx.coroutines.runBlocking
 
 /**
@@ -95,21 +94,23 @@ fun ArticleScreen(
     isFavorite: Boolean,
     onToggleFavorite: () -> Unit,
     modifier: Modifier = Modifier,
-    lazyListState: LazyListState = rememberLazyListState()
+    lazyListState: LazyListState = rememberLazyListState(),
 ) {
     // Define la referencia de Firebase y la función para enviar un artículo a Firebase
     val articlesRef = FirebaseDatabase.getInstance().getReference("articles")
 
     fun sendSingleArticleToFirebase(article: Post) {
-        val articleData = mapOf(
-            "title" to article.title,
-            "subtitle" to article.subtitle
-        )
-        articlesRef.push().setValue(articleData)
+        val articleData =
+            mapOf(
+                "title" to article.title,
+                "subtitle" to article.subtitle,
+            )
+        articlesRef
+            .push()
+            .setValue(articleData)
             .addOnSuccessListener {
                 Log.d("Firebase", "Artículo enviado: ${article.title}")
-            }
-            .addOnFailureListener { exception ->
+            }.addOnFailureListener { exception ->
                 Log.e("Firebase", "Error al enviar artículo: ${article.title}", exception)
             }
     }
@@ -136,7 +137,7 @@ fun ArticleScreen(
                         Icon(
                             imageVector = Icons.Filled.ArrowBack,
                             contentDescription = stringResource(R.string.cd_navigate_up),
-                            tint = MaterialTheme.colorScheme.primary
+                            tint = MaterialTheme.colorScheme.primary,
                         )
                     }
                 }
@@ -148,7 +149,8 @@ fun ArticleScreen(
                         actions = {
                             FavoriteButton(onClick = {
                                 showUnimplementedActionDialog = true
-                                triggerCrash("FavoriteButton")
+                                FirebaseCrashlytics.getInstance().log("Forzando un crash desde FavoriteButton en ArticleScreen")
+                                throw RuntimeException("Crash simulado")
                             })
                             BookmarkButton(isBookmarked = isFavorite, onClick = {
                                 onToggleFavorite()
@@ -166,13 +168,14 @@ fun ArticleScreen(
                             })
                             TextSettingsButton(onClick = {
                                 showUnimplementedActionDialog = true
-                                triggerCrash("TextSettingsButton")
+                                FirebaseCrashlytics.getInstance().log("Forzando un crash desde TextSettingsButton en ArticleScreen")
+                                throw RuntimeException("Crash simulado")
                             })
-                        }
+                        },
                     )
                 }
             },
-            lazyListState = lazyListState
+            lazyListState = lazyListState,
         )
     }
 }
@@ -190,7 +193,7 @@ private fun ArticleScreenContent(
     post: Post,
     navigationIconContent: @Composable () -> Unit = { },
     bottomBarContent: @Composable () -> Unit = { },
-    lazyListState: LazyListState = rememberLazyListState()
+    lazyListState: LazyListState = rememberLazyListState(),
 ) {
     val topAppBarState = rememberTopAppBarState()
     val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior(topAppBarState)
@@ -199,16 +202,17 @@ private fun ArticleScreenContent(
             TopAppBar(
                 title = post.publication?.name.orEmpty(),
                 navigationIconContent = navigationIconContent,
-                scrollBehavior = scrollBehavior
+                scrollBehavior = scrollBehavior,
             )
         },
-        bottomBar = bottomBarContent
+        bottomBar = bottomBarContent,
     ) { innerPadding ->
         PostContent(
             post = post,
             contentPadding = innerPadding,
-            modifier = Modifier
-                .nestedScroll(scrollBehavior.nestedScrollConnection),
+            modifier =
+                Modifier
+                    .nestedScroll(scrollBehavior.nestedScrollConnection),
             state = lazyListState,
         )
     }
@@ -220,7 +224,7 @@ private fun TopAppBar(
     title: String,
     navigationIconContent: @Composable () -> Unit,
     scrollBehavior: TopAppBarScrollBehavior?,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     CenterAlignedTopAppBar(
         title = {
@@ -228,20 +232,21 @@ private fun TopAppBar(
                 Image(
                     painter = painterResource(id = R.drawable.icon_article_background),
                     contentDescription = null,
-                    modifier = Modifier
-                        .clip(CircleShape)
-                        .size(36.dp)
+                    modifier =
+                        Modifier
+                            .clip(CircleShape)
+                            .size(36.dp),
                 )
                 Text(
                     text = stringResource(R.string.published_in, title),
                     style = MaterialTheme.typography.labelLarge,
-                    modifier = Modifier.padding(start = 8.dp)
+                    modifier = Modifier.padding(start = 8.dp),
                 )
             }
         },
         navigationIcon = navigationIconContent,
         scrollBehavior = scrollBehavior,
-        modifier = modifier
+        modifier = modifier,
     )
 }
 
@@ -257,14 +262,14 @@ private fun FunctionalityNotAvailablePopup(onDismiss: () -> Unit) {
         text = {
             Text(
                 text = stringResource(id = R.string.article_functionality_not_available),
-                style = MaterialTheme.typography.bodyLarge
+                style = MaterialTheme.typography.bodyLarge,
             )
         },
         confirmButton = {
             TextButton(onClick = onDismiss) {
                 Text(text = stringResource(id = R.string.close))
             }
-        }
+        },
     )
 }
 
@@ -274,17 +279,21 @@ private fun FunctionalityNotAvailablePopup(onDismiss: () -> Unit) {
  * @param post to share
  * @param context Android context to show the share sheet in
  */
-fun sharePost(post: Post, context: Context) {
-    val intent = Intent(Intent.ACTION_SEND).apply {
-        type = "text/plain"
-        putExtra(Intent.EXTRA_TITLE, post.title)
-        putExtra(Intent.EXTRA_TEXT, post.url)
-    }
+fun sharePost(
+    post: Post,
+    context: Context,
+) {
+    val intent =
+        Intent(Intent.ACTION_SEND).apply {
+            type = "text/plain"
+            putExtra(Intent.EXTRA_TITLE, post.title)
+            putExtra(Intent.EXTRA_TEXT, post.url)
+        }
     context.startActivity(
         Intent.createChooser(
             intent,
-            context.getString(R.string.article_share_post)
-        )
+            context.getString(R.string.article_share_post),
+        ),
     )
 }
 
@@ -294,9 +303,10 @@ fun sharePost(post: Post, context: Context) {
 @Composable
 fun PreviewArticleDrawer() {
     JetnewsTheme {
-        val post = runBlocking {
-            (BlockingFakePostsRepository().getPost(post3.id) as Result.Success).data
-        }
+        val post =
+            runBlocking {
+                (BlockingFakePostsRepository().getPost(post3.id) as Result.Success).data
+            }
         ArticleScreen(post, false, {}, false, {})
     }
 }
@@ -305,15 +315,16 @@ fun PreviewArticleDrawer() {
 @Preview(
     "Article screen navrail (dark)",
     uiMode = UI_MODE_NIGHT_YES,
-    device = Devices.PIXEL_C
+    device = Devices.PIXEL_C,
 )
 @Preview("Article screen navrail (big font)", fontScale = 1.5f, device = Devices.PIXEL_C)
 @Composable
 fun PreviewArticleNavRail() {
     JetnewsTheme {
-        val post = runBlocking {
-            (BlockingFakePostsRepository().getPost(post3.id) as Result.Success).data
-        }
+        val post =
+            runBlocking {
+                (BlockingFakePostsRepository().getPost(post3.id) as Result.Success).data
+            }
         ArticleScreen(post, true, {}, false, {})
     }
 }
