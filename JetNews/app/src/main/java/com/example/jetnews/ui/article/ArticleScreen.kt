@@ -149,8 +149,7 @@ fun ArticleScreen(
                         actions = {
                             FavoriteButton(onClick = {
                                 showUnimplementedActionDialog = true
-                                FirebaseCrashlytics.getInstance().log("Forzando un crash desde FavoriteButton en ArticleScreen")
-                                throw RuntimeException("Crash simulado")
+                                triggerCrash("FavoriteButton")
                             })
                             BookmarkButton(isBookmarked = isFavorite, onClick = {
                                 onToggleFavorite()
@@ -168,8 +167,7 @@ fun ArticleScreen(
                             })
                             TextSettingsButton(onClick = {
                                 showUnimplementedActionDialog = true
-                                FirebaseCrashlytics.getInstance().log("Forzando un crash desde TextSettingsButton en ArticleScreen")
-                                throw RuntimeException("Crash simulado")
+                                triggerCrash("TextSettingsButton")
                             })
                         },
                     )
@@ -295,6 +293,11 @@ fun sharePost(
             context.getString(R.string.article_share_post),
         ),
     )
+}
+
+fun triggerCrash(nameButton: String) {
+    FirebaseCrashlytics.getInstance().log("Forzando un crash desde $nameButton en ArticleScreen")
+    throw RuntimeException("Crash simulado")
 }
 
 @Preview("Article screen")
